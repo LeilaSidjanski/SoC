@@ -100,7 +100,7 @@ flpt multiplication_flpt(float x1, float y1) {
     flpt exponent = exponent_x + exponent_y + FLPT_EXPONENT_BIAS;
 
     // Shift the result right to normalize
-    if (mantissa & (1LL << (FLPT_MANTISSA_BITS * 2))) {
+    if (mantissa & (1LL << (FLPT_MANTISSA_BITS * 2))) { // Checking 47th bit for overflow
         mantissa >>= 24;
         exponent++;  // Adjust the exponent due to normalization
     } else {
