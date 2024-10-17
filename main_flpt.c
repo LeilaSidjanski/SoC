@@ -22,7 +22,8 @@ int main() {
     float y = 2.5;
 
     print_binary(multiplication_flpt(x, y));
-}
+    printf("Expected: 01000000 01110000 00000000 00000000")
+}   
 
 void print_binary(flpt value) {
     // Iterate through each bit from the most significant bit to the least
@@ -107,11 +108,13 @@ flpt multiplication_flpt(float x1, float y1) {
     }
 
     // Check for overflow or underflow in the exponent
-    if (exponent >= 255) {  // Exponent overflow
+    if (exponent >= 255) {  // Exponent overflow, set to infinity
         exponent = 255;  // Set to infinity (max exponent)
         mantissa = 0;  // No mantissa
-    } else if (exponent <= 0) {  // Exponent underflow
+    } else if (exponent <= 0) {  // Exponent underflow, set to zero
         return 0;  // Return zero for underflow
+    } else {
+        mantissa &= 0x7FFFFF; // Keep only 23 bits of mantissa
     }
 
     printf("Sign:\n");
