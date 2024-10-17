@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "fractal_flpt.h": "c",
+        "stdio.h": "c"
+    }
+}
