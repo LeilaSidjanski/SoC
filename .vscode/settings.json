@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "fractal_flpt.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "locale": "c"
     }
 }

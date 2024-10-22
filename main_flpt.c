@@ -2,10 +2,17 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <float.h>
+#include <math.h>
 
 #define FLPT_SIGN_BIT 31    // Sign bit position
 #define FLPT_MANTISSA_BITS 23
 #define FLPT_EXPONENT_BIAS 127
+
+#define FLPT_MAX_EXPONENT 255
+#define FLPT_MIN_EXPONENT 0
+#define MY_INFINIY 0x7F800000
+#define MY_MINUS_INFINITY 0xFF800000
 
 typedef int32_t flpt;
 void print_binary(flpt value);
@@ -19,12 +26,15 @@ flpt addition_flpt(float x1, float y1);
 
 int main() {
 
-    float x = 1.5;
+    /*float x = 1.5;
     float y = 2.5;
-
     print_binary(addition_flpt(x, y));
+    print_binary(multiplication_flpt(x, y));*/
 
-    //print_binary(multiplication_flpt(x, y));
+    // Testing multiplication overflow
+    float a = 1e38;
+    float b = 4.0;
+    print_binary(multiplication_flpt(a, b));
 }   
 
 void print_binary(flpt value) {
@@ -71,7 +81,8 @@ flpt format_result_flpt(flpt sign, flpt exponent, flpt mantissa) {
 }
 
 flpt multiplication_flpt(float x1, float y1) {
-    flpt x = convert_float_to_flpt(x1);
+
+    flpt x = convert_float_to_flpt(x1); 
     flpt sign_x = extract_sign_flpt(x);
     // Extracted exponent is biased
     flpt exponent_x = extract_exponent_flpt(x);
@@ -102,27 +113,33 @@ flpt multiplication_flpt(float x1, float y1) {
     print_binary(mantissa_y);
 
     flpt sign = sign_x ^ sign_y;  // Determining sign according to regular rules for multiplication
+    
+    // ARE LINES 112-120 FULLY NECESSARY? SHOULD THEY BE ALL THE WAY AT BEGINNING OF FUNCTION?
+    // THE REST OF THE CHECKS SUFFICE BUT IS IT GOOD PRACTICE?
+    //Pre-multiplication checks
+/*     if(isinf(x1) || isinf(y1)) {
+        return (sign == 0) ? MY_INFINIY : MY_MINUS_INFINITY; // Return max/min int for overflow
+    }
+    if((fabs(x1) * fabs(y1)) > FLT_MAX) {
+        return (sign == 0) ? MY_INFINIY : MY_MINUS_INFINITY;
+    } */
+    
     int64_t mantissa = (int64_t) mantissa_x * (int64_t) mantissa_y; // Multiplying the mantissas
     flpt exponent = exponent_x + exponent_y + FLPT_EXPONENT_BIAS;
 
-    // HOW TO HANDLE OVERFLOW????
-    // Shift the result right to normalize
-    if (mantissa & (1LL << (FLPT_MANTISSA_BITS * 2))) { // Checking 47th bit for overflow
-        mantissa >>= 23;
-        //exponent++;  // Adjust the exponent due to normalization
+    if(mantissa & (1LL << ((2 * FLPT_MANTISSA_BITS) + 1))) {
+        mantissa >>= 24;
+        exponent++;
     } else {
         mantissa >>= 23;
     }
 
     // Check for overflow or underflow in the exponent
-    if (exponent >= 255) {  // Exponent overflow, set to infinity
-        exponent = 255;  // Set to infinity (max exponent)
-        mantissa = 0;  // No mantissa
-    } else if (exponent <= 0) {  // Exponent underflow, set to zero
+    if (exponent >= FLPT_MAX_EXPONENT) {  // Exponent overflow, set to
+        return (sign == 0) ? MY_INFINIY : MY_MINUS_INFINITY; // Return max/min int for overflow
+    } else if (exponent <= FLPT_MIN_EXPONENT) {  // Exponent underflow, set to zero
         return format_result_flpt(0, 0, 0);  // Return zero for underflow
-    } /*else {
-        mantissa &= 0x7FFFFF; // Keep only 23 bits of mantissa
-    }*/
+    }
 
     printf("Sign:\n");
     print_binary(sign);
@@ -135,6 +152,14 @@ flpt multiplication_flpt(float x1, float y1) {
 }
 
 flpt addition_flpt(float x1, float y1) {
+    // AM I ALLOWED TO DO THESE PRE-CHECKS IN FLOAT?
+    // SAME ISSUE AS MULTIPLICATION: IS IT NECESSARY/GOOD PRACTICE?
+/*     if(x1 > 0 && y1 > 0 && (x1 + y1) > FLT_MAX) {
+        return MY_INFINIY;
+    }
+    if(x1 < 0 && y1 < 0 && (x1 + y1) < -FLT_MAX) {
+        return MY_MINUS_INFINITY;
+    } */
     flpt x = convert_float_to_flpt(x1);
     flpt sign_x = extract_sign_flpt(x);
     flpt exponent_x = extract_exponent_flpt(x);
@@ -187,12 +212,20 @@ flpt addition_flpt(float x1, float y1) {
         mantissa = mantissa_y - mantissa_x;
         sign = sign_y;
     } else {
-        return format_result_flpt(0, 0, 0);
+        return 0;
     }
 
+    // Normalizing the result if mantissa exceeds maximum range
      while(mantissa > 0xFFFFFF) {
         mantissa >>= 1;
         exponent++;
+    }
+
+    // Overflow & underflow check
+    if(exponent >= FLPT_MAX_EXPONENT) {
+        return (sign == 0) ? MY_INFINIY : MY_MINUS_INFINITY;
+    } else if (exponent <= FLPT_MIN_EXPONENT) { 
+        return format_result_flpt(0, 0, 0);
     }
     
     
